@@ -56,10 +56,25 @@ async function prepareDatabase() {
             ADD COLUMN IF NOT EXISTS sender_name TEXT
         `);
 
-        console.log('Database structure ready ✅');
+        await pool.query(`
+            ALTER TABLE messages
+            ADD COLUMN IF NOT EXISTS media_data BYTEA
+        `);
+
+        await pool.query(`
+            ALTER TABLE messages
+            ADD COLUMN IF NOT EXISTS media_mimetype TEXT
+        `);
+
+        await pool.query(`
+            ALTER TABLE messages
+            ADD COLUMN IF NOT EXISTS media_filename TEXT
+        `);
+
+        console.log('Database structure ready');
 
     } catch (error) {
-        console.error('Database preparation failed ❌');
+        console.error('Database preparation failed');
         console.error(error);
     }
 }
@@ -80,7 +95,7 @@ client.on('qr', (qr) => {
 // ============================================================
 
 client.on('authenticated', () => {
-    console.log('WhatsApp authenticated ✅');
+    console.log('WhatsApp authenticated');
 });
 
 
@@ -92,7 +107,7 @@ client.on('ready', async () => {
     try {
         console.log('');
         console.log('============================================================');
-        console.log('🎉 WHATSAPP READY ✅');
+        console.log('WHATSAPP READY');
         console.log('============================================================');
         console.log(`Time: ${new Date().toISOString()}`);
         console.log('WhatsApp client is completely ready.');
@@ -101,7 +116,7 @@ client.on('ready', async () => {
             const info = client.info;
 
             if (info) {
-                console.log('[READY DEBUG] Client info available ✅');
+                console.log('[READY DEBUG] Client info available');
 
                 console.log(
                     'Phone:',
@@ -152,7 +167,7 @@ client.on('ready', async () => {
         console.log('');
 
     } catch (error) {
-        console.error('READY handler failed ❌');
+        console.error('READY handler failed');
         console.error(error);
     }
 });
@@ -163,7 +178,7 @@ client.on('ready', async () => {
 // ============================================================
 
 client.on('auth_failure', (message) => {
-    console.error('Authentication failed ❌');
+    console.error('Authentication failed');
     console.error(message);
 });
 
@@ -194,7 +209,6 @@ function normalizeWhatsAppId(id) {
         return id._serialized;
     }
 
-    // WA Web 2.3000.x compatibility
     if (id.$1) {
         return id.$1;
     }
@@ -219,17 +233,14 @@ function getMessageSerializedId(msg) {
 
         const id = msg.id;
 
-        // Old whatsapp-web.js
         if (id._serialized) {
             return id._serialized;
         }
 
-        // New WhatsApp Web 2.3000.x
         if (id.$1) {
             return id.$1;
         }
 
-        // Reconstruct from raw message ID fields
         const fromMe =
             typeof id.fromMe !== 'undefined'
                 ? id.fromMe
@@ -489,7 +500,7 @@ async function getSenderInfo(msg) {
 
             if (contact) {
                 console.log(
-                    '[SENDER] Contact found ✅'
+                    '[SENDER] Contact found'
                 );
 
                 senderName =
@@ -731,7 +742,6 @@ async function getGroupInfo(
         );
     }
 
-    // Extra fallback
     try {
         console.log(
             '[GROUP] Trying client.getChats() fallback...'
@@ -801,7 +811,7 @@ async function downloadMediaWithFallback(msg) {
 
     if (!resolvedMessageId) {
         console.log(
-            '[MEDIA] Could not resolve message ID ❌'
+            '[MEDIA] Could not resolve message ID'
         );
 
         return null;
@@ -821,11 +831,6 @@ async function downloadMediaWithFallback(msg) {
         '[MEDIA] msg.id.id:',
         msg.id?.id
     );
-
-    // ========================================================
-    // METHOD 1
-    // Repair internal Message ID, then downloadMedia()
-    // ========================================================
 
     try {
         console.log(
@@ -926,7 +931,7 @@ async function downloadMediaWithFallback(msg) {
             );
 
             console.log(
-                '[MEDIA] Internal message ID repaired ✅'
+                '[MEDIA] Internal message ID repaired'
             );
         }
 
@@ -937,11 +942,6 @@ async function downloadMediaWithFallback(msg) {
         );
     }
 
-
-    // ========================================================
-    // METHOD 1B
-    // Rebuild the public message ID object when possible.
-    // ========================================================
 
     try {
         if (
@@ -963,7 +963,7 @@ async function downloadMediaWithFallback(msg) {
                 );
 
                 console.log(
-                    '[MEDIA] Public message ID patched ✅'
+                    '[MEDIA] Public message ID patched'
                 );
 
             } catch (patchError) {
@@ -975,10 +975,6 @@ async function downloadMediaWithFallback(msg) {
         }
     } catch (_) {}
 
-
-    // ========================================================
-    // NORMAL whatsapp-web.js DOWNLOAD
-    // ========================================================
 
     try {
         console.log(
@@ -993,7 +989,7 @@ async function downloadMediaWithFallback(msg) {
             media.data
         ) {
             console.log(
-                '[MEDIA] Media downloaded successfully ✅'
+                '[MEDIA] Media downloaded successfully'
             );
 
             return media;
@@ -1010,10 +1006,6 @@ async function downloadMediaWithFallback(msg) {
         );
     }
 
-
-    // ========================================================
-    // WAIT + SECOND ATTEMPT
-    // ========================================================
 
     try {
         console.log(
@@ -1035,7 +1027,7 @@ async function downloadMediaWithFallback(msg) {
             media.data
         ) {
             console.log(
-                '[MEDIA] Media downloaded on retry ✅'
+                '[MEDIA] Media downloaded on retry'
             );
 
             return media;
@@ -1048,10 +1040,6 @@ async function downloadMediaWithFallback(msg) {
         );
     }
 
-
-    // ========================================================
-    // DIRECT WA STORE FALLBACK
-    // ========================================================
 
     try {
         if (
@@ -1237,7 +1225,7 @@ async function downloadMediaWithFallback(msg) {
                 directResult.media.data
             ) {
                 console.log(
-                    '[MEDIA] Direct WhatsApp Store download successful ✅'
+                    '[MEDIA] Direct WhatsApp Store download successful'
                 );
 
                 return directResult.media;
@@ -1257,13 +1245,8 @@ async function downloadMediaWithFallback(msg) {
         );
     }
 
-
-    // ========================================================
-    // FINAL RESULT
-    // ========================================================
-
     console.log(
-        '[MEDIA] Media download failed ❌'
+        '[MEDIA] Media download failed'
     );
 
     return null;
@@ -1271,7 +1254,7 @@ async function downloadMediaWithFallback(msg) {
 
 
 // ============================================================
-// SAVE MEDIA TO DISK
+// SAVE MEDIA TO POSTGRESQL BYTEA
 // ============================================================
 
 async function saveMediaToDisk(
@@ -1284,39 +1267,12 @@ async function saveMediaToDisk(
             !media.data
         ) {
             console.log(
-                'No media data to save ❌'
+                'No media data to save'
             );
 
             return null;
         }
 
-        const imagesDir =
-            path.join(
-                __dirname,
-                'images'
-            );
-
-        const pdfsDir =
-            path.join(
-                __dirname,
-                'pdfs'
-            );
-
-        await fs.promises.mkdir(
-            imagesDir,
-            {
-                recursive: true
-            }
-        );
-
-        await fs.promises.mkdir(
-            pdfsDir,
-            {
-                recursive: true
-            }
-        );
-
-        let folder;
         let extension;
 
         // ====================================================
@@ -1329,8 +1285,6 @@ async function saveMediaToDisk(
                 'image/'
             )
         ) {
-            folder = imagesDir;
-
             const mimeExtension =
                 media.mimetype
                     .split('/')[1]
@@ -1350,7 +1304,6 @@ async function saveMediaToDisk(
             media.mimetype ===
             'application/pdf'
         ) {
-            folder = pdfsDir;
             extension = 'pdf';
         }
 
@@ -1377,22 +1330,11 @@ async function saveMediaToDisk(
         const filename =
             `${Date.now()}_${safeMessageId}.${extension}`;
 
-        const fullPath =
-            path.join(
-                folder,
-                filename
-            );
-
         const fileBuffer =
             Buffer.from(
                 media.data,
                 'base64'
             );
-
-        await fs.promises.writeFile(
-            fullPath,
-            fileBuffer
-        );
 
         let databasePath;
 
@@ -1410,12 +1352,12 @@ async function saveMediaToDisk(
         }
 
         console.log(
-            'Media saved successfully ✅'
+            'Media prepared for PostgreSQL BYTEA'
         );
 
         console.log(
-            'Physical file:',
-            fullPath
+            'Filename:',
+            filename
         );
 
         console.log(
@@ -1423,11 +1365,22 @@ async function saveMediaToDisk(
             databasePath
         );
 
-        return databasePath;
+        console.log(
+            'Media size:',
+            fileBuffer.length,
+            'bytes'
+        );
+
+        return {
+            databasePath,
+            filename,
+            mimetype: media.mimetype,
+            buffer: fileBuffer
+        };
 
     } catch (error) {
         console.error(
-            'Failed to save media ❌'
+            'Failed to prepare media'
         );
 
         console.error(
@@ -1455,7 +1408,7 @@ client.on(
             );
 
             console.log(
-                '📩 MESSAGE EVENT RECEIVED'
+                'MESSAGE EVENT RECEIVED'
             );
 
             console.log(
@@ -1551,7 +1504,7 @@ client.on(
             }
 
             console.log(
-                'GROUP MESSAGE DETECTED ✅'
+                'GROUP MESSAGE DETECTED'
             );
 
             console.log(
@@ -1662,7 +1615,7 @@ client.on(
             if (!messageId) {
 
                 console.log(
-                    'Message ID unavailable — skipped ❌'
+                    'Message ID unavailable — skipped'
                 );
 
                 return;
@@ -1692,9 +1645,10 @@ client.on(
 
             let hasMedia = false;
             let mediaPath = null;
+            let mediaData = null;
+            let mediaMimetype = null;
+            let mediaFilename = null;
 
-            // IMPORTANT:
-            // Text-message behavior remains unchanged.
             const originalMessage =
                 msg.body || null;
 
@@ -1706,7 +1660,7 @@ client.on(
             if (msg.hasMedia) {
 
                 console.log(
-                    'Media detected 📎'
+                    'Media detected'
                 );
 
                 try {
@@ -1734,37 +1688,63 @@ client.on(
                             'none'
                         );
 
-                        mediaPath =
+                        const savedMedia =
                             await saveMediaToDisk(
                                 media,
                                 messageId
                             );
 
-                        if (mediaPath) {
+                        if (savedMedia) {
+
+                            mediaPath =
+                                savedMedia.databasePath;
+
+                            mediaData =
+                                savedMedia.buffer;
+
+                            mediaMimetype =
+                                savedMedia.mimetype;
+
+                            mediaFilename =
+                                savedMedia.filename;
+
+                            console.log(
+                                'Media prepared successfully'
+                            );
 
                             console.log(
                                 'Media path:',
                                 mediaPath
                             );
 
+                            console.log(
+                                'Media filename:',
+                                mediaFilename
+                            );
+
+                            console.log(
+                                'Media BYTEA size:',
+                                mediaData.length
+                            );
+
                         } else {
 
                             console.log(
-                                'Media could not be saved ❌'
+                                'Media could not be prepared'
                             );
                         }
 
                     } else {
 
                         console.log(
-                            '❌ Media data unavailable after all attempts'
+                            'Media data unavailable after all attempts'
                         );
                     }
 
                 } catch (mediaError) {
 
                     console.error(
-                        'Media processing failed ❌'
+                        'Media processing failed'
                     );
 
                     console.error(
@@ -1792,7 +1772,10 @@ client.on(
                         message_type,
                         timestamp,
                         has_media,
-                        media_path
+                        media_path,
+                        media_data,
+                        media_mimetype,
+                        media_filename
                     )
 
                     VALUES (
@@ -1805,7 +1788,10 @@ client.on(
                         $7,
                         $8,
                         $9,
-                        $10
+                        $10,
+                        $11,
+                        $12,
+                        $13
                     )
 
                     ON CONFLICT (
@@ -1863,9 +1849,31 @@ client.on(
                             COALESCE(
                                 EXCLUDED.media_path,
                                 messages.media_path
+                            ),
+
+                        media_data =
+                            COALESCE(
+                                EXCLUDED.media_data,
+                                messages.media_data
+                            ),
+
+                        media_mimetype =
+                            COALESCE(
+                                EXCLUDED.media_mimetype,
+                                messages.media_mimetype
+                            ),
+
+                        media_filename =
+                            COALESCE(
+                                EXCLUDED.media_filename,
+                                messages.media_filename
                             )
 
-                    RETURNING id, media_path, has_media
+                    RETURNING
+                        id,
+                        media_path,
+                        has_media,
+                        media_filename
                     `,
                     [
                         messageId,
@@ -1882,12 +1890,15 @@ client.on(
                         msg.type,
                         messageDate,
                         hasMedia,
-                        mediaPath
+                        mediaPath,
+                        mediaData,
+                        mediaMimetype,
+                        mediaFilename
                     ]
                 );
 
             console.log(
-                '✅ Message saved/updated in PostgreSQL'
+                'Message saved/updated in PostgreSQL'
             );
 
             console.log(
@@ -1903,6 +1914,11 @@ client.on(
             console.log(
                 '[DATABASE] media_path:',
                 saveResult.rows[0]?.media_path
+            );
+
+            console.log(
+                '[DATABASE] media_filename:',
+                saveResult.rows[0]?.media_filename
             );
 
 
@@ -1964,7 +1980,7 @@ client.on(
             );
 
             console.error(
-                '❌ MESSAGE PROCESSING FAILED'
+                'MESSAGE PROCESSING FAILED'
             );
 
             console.error(
@@ -2006,7 +2022,7 @@ client.on(
     (error) => {
 
         console.error(
-            'WhatsApp client error ❌'
+            'WhatsApp client error'
         );
 
         console.error(
@@ -2017,7 +2033,7 @@ client.on(
 
 
 // ============================================================
-// LOCAL MEDIA SERVER
+// POSTGRESQL MEDIA SERVER
 // ============================================================
 
 const mediaServer =
@@ -2051,213 +2067,152 @@ const mediaServer =
                         MEDIA_BASE_URL
                     );
 
-                let requestedPath =
+                const requestedPath =
                     decodeURIComponent(
                         requestUrl.pathname
                     );
+
+                let mediaType = null;
 
                 if (
                     requestedPath.startsWith(
                         '/images/'
                     )
                 ) {
+                    mediaType = 'image';
 
-                    const filename =
-                        path.basename(
-                            requestedPath
-                        );
-
-                    const filePath =
-                        path.join(
-                            __dirname,
-                            'images',
-                            filename
-                        );
-
-                    try {
-                        await fs.promises.access(
-                            filePath,
-                            fs.constants.F_OK
-                        );
-                    } catch {
-
-                        res.writeHead(
-                            404,
-                            {
-                                'Content-Type':
-                                    'text/plain'
-                            }
-                        );
-
-                        res.end(
-                            'File Not Found'
-                        );
-
-                        return;
-                    }
-
-                    const ext =
-                        path.extname(
-                            filePath
-                        ).toLowerCase();
-
-                    const contentTypes = {
-                        '.jpg': 'image/jpeg',
-                        '.jpeg': 'image/jpeg',
-                        '.png': 'image/png',
-                        '.gif': 'image/gif',
-                        '.webp': 'image/webp',
-                        '.pdf': 'application/pdf'
-                    };
-
-                    const contentType =
-                        contentTypes[ext] ||
-                        'application/octet-stream';
-
-                    const stat =
-                        await fs.promises.stat(
-                            filePath
-                        );
-
-                    res.writeHead(
-                        200,
-                        {
-                            'Content-Type':
-                                contentType,
-
-                            'Content-Length':
-                                stat.size,
-
-                            'Content-Disposition':
-                                'inline',
-
-                            'Cache-Control':
-                                'public, max-age=31536000'
-                        }
-                    );
-
-                    if (req.method === 'HEAD') {
-                        res.end();
-                        return;
-                    }
-
-                    const file =
-                        await fs.promises.readFile(
-                            filePath
-                        );
-
-                    res.end(file);
-
-                    return;
-                }
-
-
-                if (
+                } else if (
                     requestedPath.startsWith(
                         '/pdfs/'
                     )
                 ) {
+                    mediaType = 'pdf';
 
-                    const filename =
-                        path.basename(
-                            requestedPath
-                        );
-
-                    const filePath =
-                        path.join(
-                            __dirname,
-                            'pdfs',
-                            filename
-                        );
-
-                    try {
-                        await fs.promises.access(
-                            filePath,
-                            fs.constants.F_OK
-                        );
-                    } catch {
-
-                        res.writeHead(
-                            404,
-                            {
-                                'Content-Type':
-                                    'text/plain'
-                            }
-                        );
-
-                        res.end(
-                            'File Not Found'
-                        );
-
-                        return;
-                    }
-
-                    const ext =
-                        path.extname(
-                            filePath
-                        ).toLowerCase();
-
-                    const contentTypes = {
-                        '.jpg': 'image/jpeg',
-                        '.jpeg': 'image/jpeg',
-                        '.png': 'image/png',
-                        '.gif': 'image/gif',
-                        '.webp': 'image/webp',
-                        '.pdf': 'application/pdf'
-                    };
-
-                    const contentType =
-                        contentTypes[ext] ||
-                        'application/octet-stream';
-
-                    const stat =
-                        await fs.promises.stat(
-                            filePath
-                        );
+                } else {
 
                     res.writeHead(
-                        200,
+                        404,
                         {
                             'Content-Type':
-                                contentType,
-
-                            'Content-Length':
-                                stat.size,
-
-                            'Content-Disposition':
-                                'inline',
-
-                            'Cache-Control':
-                                'public, max-age=31536000'
+                                'text/plain'
                         }
                     );
 
-                    if (req.method === 'HEAD') {
-                        res.end();
-                        return;
-                    }
+                    res.end(
+                        'File Not Found'
+                    );
 
-                    const file =
-                        await fs.promises.readFile(
-                            filePath
-                        );
+                    return;
+                }
 
-                    res.end(file);
+                const filename =
+                    path.basename(
+                        requestedPath
+                    );
+
+                if (!filename) {
+
+                    res.writeHead(
+                        400,
+                        {
+                            'Content-Type':
+                                'text/plain'
+                        }
+                    );
+
+                    res.end(
+                        'Invalid filename'
+                    );
 
                     return;
                 }
 
 
+                // ====================================================
+                // GET MEDIA DIRECTLY FROM POSTGRESQL BYTEA
+                // ====================================================
+
+                const result =
+                    await pool.query(
+                        `
+                        SELECT
+                            media_data,
+                            media_mimetype,
+                            media_filename
+                        FROM messages
+                        WHERE media_filename = $1
+                          AND media_data IS NOT NULL
+                        LIMIT 1
+                        `,
+                        [
+                            filename
+                        ]
+                    );
+
+                if (
+                    result.rows.length === 0
+                ) {
+
+                    res.writeHead(
+                        404,
+                        {
+                            'Content-Type':
+                                'text/plain'
+                        }
+                    );
+
+                    res.end(
+                        'Media Not Found'
+                    );
+
+                    return;
+                }
+
+                const row =
+                    result.rows[0];
+
+                const mediaBuffer =
+                    row.media_data;
+
+                const contentType =
+                    row.media_mimetype ||
+                    (
+                        mediaType === 'image'
+                            ? 'image/jpeg'
+                            : 'application/pdf'
+                    );
+
+
+                // ====================================================
+                // RETURN MEDIA
+                // ====================================================
+
                 res.writeHead(
-                    404,
+                    200,
                     {
                         'Content-Type':
-                            'text/plain'
+                            contentType,
+
+                        'Content-Length':
+                            mediaBuffer.length,
+
+                        'Content-Disposition':
+                            'inline',
+
+                        'Cache-Control':
+                            'public, max-age=31536000'
                     }
                 );
 
+                if (
+                    req.method === 'HEAD'
+                ) {
+                    res.end();
+                    return;
+                }
+
                 res.end(
-                    'File Not Found'
+                    mediaBuffer
                 );
 
             } catch (error) {
@@ -2290,15 +2245,15 @@ mediaServer.listen(
     () => {
 
         console.log(
-            `🖼️ Media server running on port ${MEDIA_PORT}`
+            `Media server running on port ${MEDIA_PORT}`
         );
 
         console.log(
-            `📁 Images URL: ${MEDIA_BASE_URL}/images/`
+            `Images URL: ${MEDIA_BASE_URL}/images/`
         );
 
         console.log(
-            `📄 PDFs URL: ${MEDIA_BASE_URL}/pdfs/`
+            `PDFs URL: ${MEDIA_BASE_URL}/pdfs/`
         );
     }
 );
@@ -2315,7 +2270,7 @@ console.log(
 );
 
 console.log(
-    '🚀 Starting WhatsApp client...'
+    'Starting WhatsApp client...'
 );
 
 console.log(
