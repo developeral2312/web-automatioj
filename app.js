@@ -4,6 +4,13 @@ const pool = require('./db');
 
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+
+const MEDIA_PORT = process.env.MEDIA_PORT || 3000;
+
+const MEDIA_BASE_URL =
+    process.env.MEDIA_BASE_URL ||
+    `http://localhost:${MEDIA_PORT}`;
 
 const client = new Client({
     authStrategy: new LocalAuth({
@@ -1396,10 +1403,10 @@ async function saveMediaToDisk(
             )
         ) {
             databasePath =
-                `/images/${filename}`;
+                `${MEDIA_BASE_URL}/images/${encodeURIComponent(filename)}`;
         } else {
             databasePath =
-                `/pdfs/${filename}`;
+                `${MEDIA_BASE_URL}/pdfs/${encodeURIComponent(filename)}`;
         }
 
         console.log(
@@ -2004,6 +2011,294 @@ client.on(
 
         console.error(
             error
+        );
+    }
+);
+
+
+// ============================================================
+// LOCAL MEDIA SERVER
+// ============================================================
+
+const mediaServer =
+    http.createServer(
+        async (req, res) => {
+
+            try {
+
+                if (
+                    req.method !== 'GET' &&
+                    req.method !== 'HEAD'
+                ) {
+                    res.writeHead(
+                        405,
+                        {
+                            'Content-Type':
+                                'text/plain'
+                        }
+                    );
+
+                    res.end(
+                        'Method Not Allowed'
+                    );
+
+                    return;
+                }
+
+                const requestUrl =
+                    new URL(
+                        req.url,
+                        MEDIA_BASE_URL
+                    );
+
+                let requestedPath =
+                    decodeURIComponent(
+                        requestUrl.pathname
+                    );
+
+                if (
+                    requestedPath.startsWith(
+                        '/images/'
+                    )
+                ) {
+
+                    const filename =
+                        path.basename(
+                            requestedPath
+                        );
+
+                    const filePath =
+                        path.join(
+                            __dirname,
+                            'images',
+                            filename
+                        );
+
+                    try {
+                        await fs.promises.access(
+                            filePath,
+                            fs.constants.F_OK
+                        );
+                    } catch {
+
+                        res.writeHead(
+                            404,
+                            {
+                                'Content-Type':
+                                    'text/plain'
+                            }
+                        );
+
+                        res.end(
+                            'File Not Found'
+                        );
+
+                        return;
+                    }
+
+                    const ext =
+                        path.extname(
+                            filePath
+                        ).toLowerCase();
+
+                    const contentTypes = {
+                        '.jpg': 'image/jpeg',
+                        '.jpeg': 'image/jpeg',
+                        '.png': 'image/png',
+                        '.gif': 'image/gif',
+                        '.webp': 'image/webp',
+                        '.pdf': 'application/pdf'
+                    };
+
+                    const contentType =
+                        contentTypes[ext] ||
+                        'application/octet-stream';
+
+                    const stat =
+                        await fs.promises.stat(
+                            filePath
+                        );
+
+                    res.writeHead(
+                        200,
+                        {
+                            'Content-Type':
+                                contentType,
+
+                            'Content-Length':
+                                stat.size,
+
+                            'Content-Disposition':
+                                'inline',
+
+                            'Cache-Control':
+                                'public, max-age=31536000'
+                        }
+                    );
+
+                    if (req.method === 'HEAD') {
+                        res.end();
+                        return;
+                    }
+
+                    const file =
+                        await fs.promises.readFile(
+                            filePath
+                        );
+
+                    res.end(file);
+
+                    return;
+                }
+
+
+                if (
+                    requestedPath.startsWith(
+                        '/pdfs/'
+                    )
+                ) {
+
+                    const filename =
+                        path.basename(
+                            requestedPath
+                        );
+
+                    const filePath =
+                        path.join(
+                            __dirname,
+                            'pdfs',
+                            filename
+                        );
+
+                    try {
+                        await fs.promises.access(
+                            filePath,
+                            fs.constants.F_OK
+                        );
+                    } catch {
+
+                        res.writeHead(
+                            404,
+                            {
+                                'Content-Type':
+                                    'text/plain'
+                            }
+                        );
+
+                        res.end(
+                            'File Not Found'
+                        );
+
+                        return;
+                    }
+
+                    const ext =
+                        path.extname(
+                            filePath
+                        ).toLowerCase();
+
+                    const contentTypes = {
+                        '.jpg': 'image/jpeg',
+                        '.jpeg': 'image/jpeg',
+                        '.png': 'image/png',
+                        '.gif': 'image/gif',
+                        '.webp': 'image/webp',
+                        '.pdf': 'application/pdf'
+                    };
+
+                    const contentType =
+                        contentTypes[ext] ||
+                        'application/octet-stream';
+
+                    const stat =
+                        await fs.promises.stat(
+                            filePath
+                        );
+
+                    res.writeHead(
+                        200,
+                        {
+                            'Content-Type':
+                                contentType,
+
+                            'Content-Length':
+                                stat.size,
+
+                            'Content-Disposition':
+                                'inline',
+
+                            'Cache-Control':
+                                'public, max-age=31536000'
+                        }
+                    );
+
+                    if (req.method === 'HEAD') {
+                        res.end();
+                        return;
+                    }
+
+                    const file =
+                        await fs.promises.readFile(
+                            filePath
+                        );
+
+                    res.end(file);
+
+                    return;
+                }
+
+
+                res.writeHead(
+                    404,
+                    {
+                        'Content-Type':
+                            'text/plain'
+                    }
+                );
+
+                res.end(
+                    'File Not Found'
+                );
+
+            } catch (error) {
+
+                console.error(
+                    '[MEDIA SERVER] Error:',
+                    error.message
+                );
+
+                if (!res.headersSent) {
+                    res.writeHead(
+                        500,
+                        {
+                            'Content-Type':
+                                'text/plain'
+                        }
+                    );
+                }
+
+                res.end(
+                    'Internal Server Error'
+                );
+            }
+        }
+    );
+
+mediaServer.listen(
+    MEDIA_PORT,
+    '0.0.0.0',
+    () => {
+
+        console.log(
+            `🖼️ Media server running on port ${MEDIA_PORT}`
+        );
+
+        console.log(
+            `📁 Images URL: ${MEDIA_BASE_URL}/images/`
+        );
+
+        console.log(
+            `📄 PDFs URL: ${MEDIA_BASE_URL}/pdfs/`
         );
     }
 );
