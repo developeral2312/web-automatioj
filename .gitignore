@@ -1,0 +1,12 @@
+node_modules/
+.wwebjs_auth/
+.wwebjs_cache/
+.env
+.env.*
+*.log
+
+images/
+pdfs/
+
+session/
+sessions/
