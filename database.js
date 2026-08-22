@@ -27,23 +27,25 @@ async function initDatabase() {
                 id SERIAL PRIMARY KEY,
                 whatsapp_message_id TEXT UNIQUE NOT NULL,
                 group_id INTEGER REFERENCES groups(id),
-                sender_id TEXT,                    --  LID or @c.us ID
-                sender_number TEXT,                -- Phone number
-                sender_name TEXT,                  -- Contact name
+                group_name TEXT,                    -- ✅ YEH COLUMN ADD KARO
+                sender_id TEXT,
+                sender_number TEXT,
+                sender_name TEXT,
                 message TEXT,
                 message_type TEXT,
                 timestamp TIMESTAMP,
                 has_media BOOLEAN DEFAULT FALSE,
                 media_path TEXT,
-                extracted_text TEXT,               --  OCR/PDF text
+                location_link TEXT,         
+                extracted_text TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
 
-        console.log(' Database tables ready');
-        console.log(' Columns: sender_id, sender_number, sender_name, extracted_text');
+        console.log('✅ Database tables ready');
+        console.log('✅ Columns: group_id, group_name, sender_id, sender_number, sender_name, extracted_text');
     } catch (error) {
-        console.error(' Database initialization failed:', error.message);
+        console.error('❌ Database initialization failed:', error.message);
         console.error(error);
         throw error;
     } finally {

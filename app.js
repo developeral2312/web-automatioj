@@ -64,7 +64,10 @@ async function prepareDatabase() {
             ALTER TABLE messages
             ADD COLUMN IF NOT EXISTS media_filename TEXT
         `);
-
+        await pool.query(`
+            ALTER TABLE messages
+            ADD COLUMN IF NOT EXISTS location_link TEXT
+        `);
         console.log('Database structure ready');
 
     } catch (error) {
@@ -585,48 +588,285 @@ async function getSenderInfo(msg) {
         };
     }
 }
-async function getGroupInfo(
-    msg,
-    groupWhatsappId
-) {
+async function getGroupInfo(msg, groupWhatsappId) {
     let groupName = null;
 
+    console.log('');
+    console.log('========== GROUP DEBUG START ==========');
+    console.log('[GROUP] groupWhatsappId:', groupWhatsappId);
+
+    if (!groupWhatsappId) {
+        console.log('[GROUP] No group ID');
+
+        return {
+            groupName: null,
+            chat: null
+        };
+    }
+
+    // ==================================================
+    // 1. CURRENT WHATSAPP-WEB.JS / WWebJS LOOKUP
+    // ==================================================
     try {
-        console.log(
-            '[GROUP] Trying msg.getChat()...'
-        );
-
-        const chat =
-            await msg.getChat();
-
         if (
-            chat &&
-            chat.isGroup
+            client.pupPage &&
+            !client.pupPage.isClosed()
         ) {
-            groupName =
-                chat.name || null;
-
             console.log(
-                '[GROUP] Group name from msg.getChat():',
-                groupName
+                '[GROUP-WWEBJS] Trying WWebJS.getChat()...'
             );
 
-            return {
-                groupName,
-                chat
-            };
+            const result =
+                await client.pupPage.evaluate(
+                    async (groupId) => {
+
+                        try {
+
+                            if (
+                                !window.WWebJS ||
+                                typeof window.WWebJS.getChat !== 'function'
+                            ) {
+                                return {
+                                    ok: false,
+                                    error: 'WWebJS.getChat unavailable'
+                                };
+                            }
+
+                            const chat =
+                                await window.WWebJS.getChat(
+                                    groupId,
+                                    {
+                                        getAsModel: true
+                                    }
+                                );
+
+                            if (!chat) {
+                                return {
+                                    ok: false,
+                                    error: 'WWebJS returned no chat'
+                                };
+                            }
+
+                            const name =
+                                chat.name ||
+                                chat.formattedTitle ||
+                                chat.groupMetadata?.subject ||
+                                chat.groupMetadata?.name ||
+                                null;
+
+                            return {
+                                ok: true,
+                                name: name,
+                                id:
+                                    chat.id?._serialized ||
+                                    chat.id?.$1 ||
+                                    null,
+                                isGroup:
+                                    chat.isGroup ||
+                                    chat.id?.server === 'g.us' ||
+                                    false
+                            };
+
+                        } catch (error) {
+
+                            return {
+                                ok: false,
+                                error:
+                                    error?.message ||
+                                    String(error)
+                            };
+                        }
+
+                    },
+                    groupWhatsappId
+                );
+
+            console.log(
+                '[GROUP-WWEBJS] Result:',
+                result
+            );
+
+            if (
+                result?.ok &&
+                result?.name
+            ) {
+                groupName = result.name;
+
+                console.log(
+                    '[GROUP-WWEBJS] GROUP NAME FOUND:',
+                    groupName
+                );
+
+                console.log(
+                    '========== GROUP DEBUG END =========='
+                );
+
+                return {
+                    groupName,
+                    chat: null
+                };
+            }
+
+        } else {
+
+            console.log(
+                '[GROUP-WWEBJS] pupPage unavailable'
+            );
         }
 
     } catch (error) {
+
         console.log(
-            '[GROUP] msg.getChat() failed:',
-            error.message
+            '[GROUP-WWEBJS] Lookup failed:',
+            error?.message || error
         );
     }
 
+
+    // ==================================================
+    // 2. DIRECT WAWebCollections FALLBACK
+    // ==================================================
     try {
+
+        if (
+            client.pupPage &&
+            !client.pupPage.isClosed()
+        ) {
+
+            console.log(
+                '[GROUP-COLLECTION] Trying WAWebCollections.Chat...'
+            );
+
+            const result =
+                await client.pupPage.evaluate(
+                    async (groupId) => {
+
+                        try {
+
+                            const collections =
+                                window.require(
+                                    'WAWebCollections'
+                                );
+
+                            if (!collections) {
+                                return {
+                                    ok: false,
+                                    error:
+                                        'WAWebCollections unavailable'
+                                };
+                            }
+
+                            let chat = null;
+
+                            if (
+                                collections.Chat
+                            ) {
+
+                                try {
+                                    chat =
+                                        collections.Chat.get(
+                                            groupId
+                                        );
+                                } catch (_) {}
+
+                                if (!chat) {
+
+                                    try {
+                                        chat =
+                                            await collections.Chat.find(
+                                                groupId
+                                            );
+                                    } catch (_) {}
+                                }
+                            }
+
+                            if (!chat) {
+                                return {
+                                    ok: false,
+                                    error:
+                                        'Chat not found in WAWebCollections'
+                                };
+                            }
+
+                            const name =
+                                chat.name ||
+                                chat.formattedTitle ||
+                                chat.groupMetadata?.subject ||
+                                chat.groupMetadata?.name ||
+                                null;
+
+                            return {
+                                ok: true,
+                                name: name,
+                                id:
+                                    chat.id?._serialized ||
+                                    chat.id?.$1 ||
+                                    null,
+                                isGroup:
+                                    chat.isGroup ||
+                                    chat.id?.server === 'g.us' ||
+                                    false
+                            };
+
+                        } catch (error) {
+
+                            return {
+                                ok: false,
+                                error:
+                                    error?.message ||
+                                    String(error)
+                            };
+                        }
+
+                    },
+                    groupWhatsappId
+                );
+
+            console.log(
+                '[GROUP-COLLECTION] Result:',
+                result
+            );
+
+            if (
+                result?.ok &&
+                result?.name
+            ) {
+
+                groupName =
+                    result.name;
+
+                console.log(
+                    '[GROUP-COLLECTION] GROUP NAME FOUND:',
+                    groupName
+                );
+
+                console.log(
+                    '========== GROUP DEBUG END =========='
+                );
+
+                return {
+                    groupName,
+                    chat: null
+                };
+            }
+        }
+
+    } catch (error) {
+
         console.log(
-            '[GROUP] Trying client.getChatById()...'
+            '[GROUP-COLLECTION] Lookup failed:',
+            error?.message || error
+        );
+    }
+
+
+    // ==================================================
+    // 3. NORMAL whatsapp-web.js FALLBACK
+    // ==================================================
+    try {
+
+        console.log(
+            '[GROUP-FALLBACK] Trying client.getChatById()...'
         );
 
         const chat =
@@ -635,74 +875,127 @@ async function getGroupInfo(
             );
 
         if (chat) {
+
+            console.log(
+                '[GROUP-FALLBACK] Chat object found'
+            );
+
+            console.log(
+                '[GROUP-FALLBACK] Chat name:',
+                chat.name
+            );
+
+            console.log(
+                '[GROUP-FALLBACK] Chat formattedTitle:',
+                chat.formattedTitle
+            );
+
             groupName =
                 chat.name ||
                 chat.formattedTitle ||
+                chat.groupMetadata?.subject ||
+                chat.groupMetadata?.name ||
                 null;
 
-            console.log(
-                '[GROUP] Fallback group name:',
-                groupName
-            );
+            if (groupName) {
 
-            return {
-                groupName,
-                chat
-            };
+                console.log(
+                    '[GROUP-FALLBACK] GROUP NAME FOUND:',
+                    groupName
+                );
+
+                console.log(
+                    '========== GROUP DEBUG END =========='
+                );
+
+                return {
+                    groupName,
+                    chat
+                };
+            }
         }
 
     } catch (error) {
+
         console.log(
-            '[GROUP] client.getChatById() failed:',
-            error.message
+            '[GROUP-FALLBACK] client.getChatById failed:',
+            error?.message || error
         );
     }
 
+
+    // ==================================================
+    // 4. MESSAGE CHAT FALLBACK
+    // ==================================================
     try {
+
         console.log(
-            '[GROUP] Trying client.getChats() fallback...'
+            '[GROUP-MESSAGE] Trying msg.getChat()...'
         );
 
-        const chats =
-            await client.getChats();
+        const chat =
+            await msg.getChat();
 
-        const foundChat =
-            chats.find(chat =>
-                normalizeWhatsAppId(
-                    chat?.id
-                ) === groupWhatsappId
-            );
+        if (chat) {
 
-        if (foundChat) {
             groupName =
-                foundChat.name ||
-                foundChat.formattedTitle ||
+                chat.name ||
+                chat.formattedTitle ||
+                chat.groupMetadata?.subject ||
+                chat.groupMetadata?.name ||
                 null;
 
             console.log(
-                '[GROUP] getChats() group name:',
+                '[GROUP-MESSAGE] Name:',
                 groupName
             );
 
-            return {
-                groupName,
-                chat: foundChat
-            };
+            if (groupName) {
+
+                console.log(
+                    '========== GROUP DEBUG END =========='
+                );
+
+                return {
+                    groupName,
+                    chat
+                };
+            }
         }
 
     } catch (error) {
+
         console.log(
-            '[GROUP] getChats() fallback failed:',
-            error.message
+            '[GROUP-MESSAGE] msg.getChat() failed:',
+            error?.message || error
         );
     }
+
+
+    // ==================================================
+    // FINAL
+    // ==================================================
 
     console.log(
         '[GROUP] Group name could not be resolved'
     );
 
+    console.log(
+        '[GROUP] Group ID:',
+        groupWhatsappId
+    );
+
+    console.log(
+        '[GROUP] Final group name:',
+        groupName
+    );
+
+    console.log(
+        '========== GROUP DEBUG END =========='
+    );
+
     return {
-        groupName: null,
+        groupName: groupName || null,
         chat: null
     };
 }
@@ -1488,9 +1781,29 @@ client.on(
             let mediaData = null;
             let mediaMimetype = null;
             let mediaFilename = null;
+            // 🆕 LOCATION DETECT - originalMessage se PEHLE
+            // 🆕 LOCATION DETECT
+            let originalMessage = null;
+            let locationLink = null;
 
-            const originalMessage =
-                msg.body || null;
+            if (msg.type === 'location') {
+                console.log('📍 Location message detected');
+                try {
+                    const location = msg.location;
+                    if (location) {
+                        const lat = location.latitude;
+                        const lon = location.longitude;
+                        locationLink = `https://www.google.com/maps?q=${lat},${lon}`;
+                        originalMessage = locationLink;
+                        console.log('📍 Location link:', locationLink);
+                    }
+                } catch (error) {
+                    console.error('Location parsing failed:', error.message);
+                    originalMessage = '📍 Location (failed to parse)';
+                }
+            } else {
+                originalMessage = msg.body || null;
+            }
             if (msg.hasMedia) {
 
                 console.log(
@@ -1587,143 +1900,65 @@ client.on(
                     );
                 }
             }
-            const saveResult =
-                await pool.query(
-                    `
-                    INSERT INTO messages (
-                        whatsapp_message_id,
-                        group_id,
-                        sender_id,
-                        sender_number,
-                        sender_name,
-                        message,
-                        message_type,
-                        timestamp,
-                        has_media,
-                        media_path,
-                        media_data,
-                        media_mimetype,
-                        media_filename
-                    )
+            
+            // ✅ FIXED INSERT QUERY - VALUES ORDER CORRECT
+            const saveResult = await pool.query(
+                `
+                INSERT INTO messages (
+                whatsapp_message_id,
+                group_id,
+                group_name,
+                sender_id,
+                sender_number,
+                sender_name,
+                message,
+                message_type,
+                timestamp,
+                has_media,
+                media_path,
+                media_data,
+                media_mimetype,
+                media_filename,
+                location_link          
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                ON CONFLICT (whatsapp_message_id)
+                DO UPDATE SET
+                    group_id = COALESCE(EXCLUDED.group_id, messages.group_id),
+                    group_name = COALESCE(EXCLUDED.group_name, messages.group_name),
+                    sender_id = COALESCE(EXCLUDED.sender_id, messages.sender_id),
+                    sender_number = COALESCE(EXCLUDED.sender_number, messages.sender_number),
+                    sender_name = COALESCE(EXCLUDED.sender_name, messages.sender_name),
+                    message = COALESCE(EXCLUDED.message, messages.message),
+                    message_type = COALESCE(EXCLUDED.message_type, messages.message_type),
+                    timestamp = COALESCE(EXCLUDED.timestamp, messages.timestamp),
+                    has_media = messages.has_media OR EXCLUDED.has_media,
+                    media_path = COALESCE(EXCLUDED.media_path, messages.media_path),
+                    media_data = COALESCE(EXCLUDED.media_data, messages.media_data),
+                    media_mimetype = COALESCE(EXCLUDED.media_mimetype, messages.media_mimetype),
+                    media_filename = COALESCE(EXCLUDED.media_filename, messages.media_filename),
+                    location_link = COALESCE(EXCLUDED.location_link, messages.location_link)  -- 🆕 YEH ADD KARO
 
-                    VALUES (
-                        $1,
-                        $2,
-                        $3,
-                        $4,
-                        $5,
-                        $6,
-                        $7,
-                        $8,
-                        $9,
-                        $10,
-                        $11,
-                        $12,
-                        $13
-                    )
-
-                    ON CONFLICT (
-                        whatsapp_message_id
-                    )
-
-                    DO UPDATE SET
-
-                        group_id =
-                            COALESCE(
-                                EXCLUDED.group_id,
-                                messages.group_id
-                            ),
-
-                        sender_id =
-                            COALESCE(
-                                EXCLUDED.sender_id,
-                                messages.sender_id
-                            ),
-
-                        sender_number =
-                            COALESCE(
-                                EXCLUDED.sender_number,
-                                messages.sender_number
-                            ),
-
-                        sender_name =
-                            COALESCE(
-                                EXCLUDED.sender_name,
-                                messages.sender_name
-                            ),
-
-                        message =
-                            COALESCE(
-                                EXCLUDED.message,
-                                messages.message
-                            ),
-
-                        message_type =
-                            COALESCE(
-                                EXCLUDED.message_type,
-                                messages.message_type
-                            ),
-
-                        timestamp =
-                            COALESCE(
-                                EXCLUDED.timestamp,
-                                messages.timestamp
-                            ),
-
-                        has_media =
-                            messages.has_media OR EXCLUDED.has_media,
-
-                        media_path =
-                            COALESCE(
-                                EXCLUDED.media_path,
-                                messages.media_path
-                            ),
-
-                        media_data =
-                            COALESCE(
-                                EXCLUDED.media_data,
-                                messages.media_data
-                            ),
-
-                        media_mimetype =
-                            COALESCE(
-                                EXCLUDED.media_mimetype,
-                                messages.media_mimetype
-                            ),
-
-                        media_filename =
-                            COALESCE(
-                                EXCLUDED.media_filename,
-                                messages.media_filename
-                            )
-
-                    RETURNING
-                        id,
-                        media_path,
-                        has_media,
-                        media_filename
-                    `,
-                    [
-                        messageId,
-                        groupId,
-                        senderId,
-                        senderNumber,
-
-                        senderName ||
-                            senderNumber ||
-                            senderId ||
-                            'Unknown Sender',
-
-                        originalMessage,
-                        msg.type,
-                        messageDate,
-                        hasMedia,
-                        mediaPath,
-                        mediaData,
-                        mediaMimetype,
-                        mediaFilename
-                    ]
-                );
+                RETURNING id, media_path, has_media, media_filename
+                `,
+                [
+                    messageId,                // $1
+                    groupId,                  // $2
+                    groupName,                // $3 ✅ GROUP NAME YAHAN
+                    senderId,                 // $4
+                    senderNumber,             // $5
+                    senderName || senderNumber || senderId || 'Unknown Sender', // $6
+                    originalMessage,          // $7
+                    msg.type,                 // $8
+                    messageDate,              // $9
+                    hasMedia,                 // $10
+                    mediaPath,                // $11
+                    mediaData,                // $12
+                    mediaMimetype,            // $13
+                    mediaFilename,
+                    locationLink                        
+                ]
+            );
 
             console.log(
                 'Message saved/updated in PostgreSQL'
