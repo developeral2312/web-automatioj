@@ -1472,6 +1472,8 @@ async function saveMediaToDisk(
         }
 
         let extension;
+        let mediaFolder;
+
         if (
             media.mimetype &&
             media.mimetype.startsWith(
@@ -1487,12 +1489,30 @@ async function saveMediaToDisk(
                 mimeExtension === 'jpeg'
                     ? 'jpg'
                     : mimeExtension;
+            mediaFolder = 'images';
         }
         else if (
             media.mimetype ===
             'application/pdf'
         ) {
             extension = 'pdf';
+            mediaFolder = 'pdfs';
+        }
+        // 🆕 VIDEO SUPPORT
+        else if (
+            media.mimetype &&
+            media.mimetype.startsWith('video/')
+        ) {
+            const mimeExtension =
+                media.mimetype
+                    .split('/')[1]
+                    .split(';')[0];
+            extension =
+                mimeExtension === 'quicktime'
+                    ? 'mov'
+                    : mimeExtension;
+            mediaFolder = 'videos';
+            console.log('🎬 Video detected:', media.mimetype);
         }
         else {
             console.log(
@@ -1519,20 +1539,8 @@ async function saveMediaToDisk(
                 'base64'
             );
 
-        let databasePath;
-
-        if (
-            media.mimetype &&
-            media.mimetype.startsWith(
-                'image/'
-            )
-        ) {
-            databasePath =
-                `${MEDIA_BASE_URL}/images/${encodeURIComponent(filename)}`;
-        } else {
-            databasePath =
-                `${MEDIA_BASE_URL}/pdfs/${encodeURIComponent(filename)}`;
-        }
+        const databasePath =
+            `${MEDIA_BASE_URL}/${mediaFolder}/${encodeURIComponent(filename)}`;
 
         console.log(
             'Media prepared for PostgreSQL BYTEA'
@@ -1937,14 +1945,14 @@ client.on(
                     media_data = COALESCE(EXCLUDED.media_data, messages.media_data),
                     media_mimetype = COALESCE(EXCLUDED.media_mimetype, messages.media_mimetype),
                     media_filename = COALESCE(EXCLUDED.media_filename, messages.media_filename),
-                    location_link = COALESCE(EXCLUDED.location_link, messages.location_link)  -- 🆕 YEH ADD KARO
+                    location_link = COALESCE(EXCLUDED.location_link, messages.location_link)
 
                 RETURNING id, media_path, has_media, media_filename
                 `,
                 [
                     messageId,                // $1
                     groupId,                  // $2
-                    groupName,                // $3 ✅ GROUP NAME YAHAN
+                    groupName,                // $3
                     senderId,                 // $4
                     senderNumber,             // $5
                     senderName || senderNumber || senderId || 'Unknown Sender', // $6
@@ -1955,8 +1963,8 @@ client.on(
                     mediaPath,                // $11
                     mediaData,                // $12
                     mediaMimetype,            // $13
-                    mediaFilename,
-                    locationLink                        
+                    mediaFilename,            // $14
+                    locationLink              // $15
                 ]
             );
 
@@ -2141,6 +2149,13 @@ const mediaServer =
                 ) {
                     mediaType = 'pdf';
 
+                } else if (
+                    requestedPath.startsWith(
+                        '/videos/'
+                    )
+                ) {
+                    mediaType = 'video';
+
                 } else {
 
                     res.writeHead(
@@ -2223,6 +2238,8 @@ const mediaServer =
                     (
                         mediaType === 'image'
                             ? 'image/jpeg'
+                            : mediaType === 'video'
+                            ? 'video/mp4'
                             : 'application/pdf'
                     );
 
@@ -2293,6 +2310,10 @@ mediaServer.listen(
 
         console.log(
             `PDFs URL: ${MEDIA_BASE_URL}/pdfs/`
+        );
+
+        console.log(
+            `Videos URL: ${MEDIA_BASE_URL}/videos/`
         );
     }
 );
