@@ -28,12 +28,6 @@ const client = new Client({
         headless: true
     }
 });
-
-
-// ============================================================
-// DATABASE PREPARATION
-// ============================================================
-
 async function prepareDatabase() {
     try {
         await pool.query(`
@@ -78,31 +72,13 @@ async function prepareDatabase() {
         console.error(error);
     }
 }
-
-
-// ============================================================
-// QR CODE
-// ============================================================
-
 client.on('qr', (qr) => {
     console.log('QR code scan karo:');
     qrcode.generate(qr, { small: true });
 });
-
-
-// ============================================================
-// AUTHENTICATED
-// ============================================================
-
 client.on('authenticated', () => {
     console.log('WhatsApp authenticated');
 });
-
-
-// ============================================================
-// READY
-// ============================================================
-
 client.on('ready', async () => {
     try {
         console.log('');
@@ -163,7 +139,7 @@ client.on('ready', async () => {
 
         await prepareDatabase();
 
-        console.log('============================================================');
+        console.log('================================');
         console.log('');
 
     } catch (error) {
@@ -171,31 +147,13 @@ client.on('ready', async () => {
         console.error(error);
     }
 });
-
-
-// ============================================================
-// AUTH FAILURE
-// ============================================================
-
 client.on('auth_failure', (message) => {
     console.error('Authentication failed');
     console.error(message);
 });
-
-
-// ============================================================
-// DISCONNECTED
-// ============================================================
-
 client.on('disconnected', (reason) => {
     console.log('WhatsApp disconnected:', reason);
 });
-
-
-// ============================================================
-// NORMALIZE WHATSAPP ID
-// ============================================================
-
 function normalizeWhatsAppId(id) {
     if (!id) {
         return null;
@@ -219,12 +177,6 @@ function normalizeWhatsAppId(id) {
 
     return null;
 }
-
-
-// ============================================================
-// GET REAL MESSAGE SERIALIZED ID
-// ============================================================
-
 function getMessageSerializedId(msg) {
     try {
         if (!msg || !msg.id) {
@@ -286,12 +238,6 @@ function getMessageSerializedId(msg) {
         return null;
     }
 }
-
-
-// ============================================================
-// EXTRACT PHONE FROM ID
-// ============================================================
-
 function extractPhoneFromId(id) {
     if (!id) {
         return null;
@@ -310,12 +256,6 @@ function extractPhoneFromId(id) {
 
     return null;
 }
-
-
-// ============================================================
-// GET CONTACT NAME
-// ============================================================
-
 function getBestContactName(contact) {
     if (!contact) {
         return null;
@@ -340,12 +280,6 @@ function getBestContactName(contact) {
 
     return null;
 }
-
-
-// ============================================================
-// SAFE CONTACT LOOKUP
-// ============================================================
-
 async function safeGetContact(contactId) {
     try {
         if (!contactId) {
@@ -379,12 +313,6 @@ async function safeGetContact(contactId) {
         return null;
     }
 }
-
-
-// ============================================================
-// LID -> PHONE NUMBER
-// ============================================================
-
 async function resolveLidToPhone(lid) {
     try {
         if (!lid) {
@@ -444,12 +372,6 @@ async function resolveLidToPhone(lid) {
         return null;
     }
 }
-
-
-// ============================================================
-// GET SENDER INFORMATION
-// ============================================================
-
 async function getSenderInfo(msg) {
     let senderId = null;
     let senderNumber = null;
@@ -663,12 +585,6 @@ async function getSenderInfo(msg) {
         };
     }
 }
-
-
-// ============================================================
-// GET GROUP INFORMATION
-// ============================================================
-
 async function getGroupInfo(
     msg,
     groupWhatsappId
@@ -790,12 +706,6 @@ async function getGroupInfo(
         chat: null
     };
 }
-
-
-// ============================================================
-// MEDIA DOWNLOAD — WA WEB 2.3000.x FIX
-// ============================================================
-
 async function downloadMediaWithFallback(msg) {
     if (!msg || !msg.hasMedia) {
         return null;
@@ -1251,15 +1161,10 @@ async function downloadMediaWithFallback(msg) {
 
     return null;
 }
-
-
-// ============================================================
-// SAVE MEDIA TO POSTGRESQL BYTEA
-// ============================================================
-
 async function saveMediaToDisk(
     media,
     messageId
+
 ) {
     try {
         if (
@@ -1274,11 +1179,6 @@ async function saveMediaToDisk(
         }
 
         let extension;
-
-        // ====================================================
-        // IMAGE
-        // ====================================================
-
         if (
             media.mimetype &&
             media.mimetype.startsWith(
@@ -1295,22 +1195,12 @@ async function saveMediaToDisk(
                     ? 'jpg'
                     : mimeExtension;
         }
-
-        // ====================================================
-        // PDF
-        // ====================================================
-
         else if (
             media.mimetype ===
             'application/pdf'
         ) {
             extension = 'pdf';
         }
-
-        // ====================================================
-        // UNSUPPORTED
-        // ====================================================
-
         else {
             console.log(
                 'Unsupported media type:',
@@ -1390,12 +1280,6 @@ async function saveMediaToDisk(
         return null;
     }
 }
-
-
-// ============================================================
-// MESSAGE EVENT
-// ============================================================
-
 client.on(
     'message',
     async (msg) => {
@@ -1404,7 +1288,7 @@ client.on(
 
             console.log('');
             console.log(
-                '============================================================'
+                '===================================='
             );
 
             console.log(
@@ -1412,7 +1296,7 @@ client.on(
             );
 
             console.log(
-                '============================================================'
+                '==============================='
             );
 
             console.log(
@@ -1466,11 +1350,6 @@ client.on(
                 msg.timestamp
             );
 
-
-            // ==================================================
-            // GROUP ID
-            // ==================================================
-
             const groupWhatsappId =
                 normalizeWhatsAppId(
                     msg.id?.remote
@@ -1483,11 +1362,6 @@ client.on(
                 '[GROUP] Detected chat ID:',
                 groupWhatsappId
             );
-
-
-            // ==================================================
-            // GROUP CHECK
-            // ==================================================
 
             if (
                 !groupWhatsappId ||
@@ -1512,11 +1386,6 @@ client.on(
                 groupWhatsappId
             );
 
-
-            // ==================================================
-            // GROUP INFORMATION
-            // ==================================================
-
             const {
                 groupName
             } =
@@ -1530,11 +1399,6 @@ client.on(
                 groupName ||
                 'Unknown Group'
             );
-
-
-            // ==================================================
-            // SAVE / UPDATE GROUP
-            // ==================================================
 
             const groupResult =
                 await pool.query(
@@ -1572,11 +1436,6 @@ client.on(
                 groupId
             );
 
-
-            // ==================================================
-            // SENDER
-            // ==================================================
-
             const {
                 senderId,
                 senderNumber,
@@ -1598,15 +1457,8 @@ client.on(
                 'Final Sender Name:',
                 senderName
             );
-
-
-            // ==================================================
-            // MESSAGE ID
-            // ==================================================
-
             const messageId =
                 getMessageSerializedId(msg);
-
             console.log(
                 'Message ID:',
                 messageId
@@ -1620,12 +1472,6 @@ client.on(
 
                 return;
             }
-
-
-            // ==================================================
-            // MESSAGE DATE
-            // ==================================================
-
             const timestamp =
                 Number(
                     msg.timestamp
@@ -1637,12 +1483,6 @@ client.on(
                         timestamp * 1000
                     )
                     : new Date();
-
-
-            // ==================================================
-            // MEDIA VARIABLES
-            // ==================================================
-
             let hasMedia = false;
             let mediaPath = null;
             let mediaData = null;
@@ -1651,12 +1491,6 @@ client.on(
 
             const originalMessage =
                 msg.body || null;
-
-
-            // ==================================================
-            // MEDIA PROCESSING
-            // ==================================================
-
             if (msg.hasMedia) {
 
                 console.log(
@@ -1753,12 +1587,6 @@ client.on(
                     );
                 }
             }
-
-
-            // ==================================================
-            // SAVE MESSAGE
-            // ==================================================
-
             const saveResult =
                 await pool.query(
                     `
@@ -1964,11 +1792,11 @@ client.on(
             );
 
             console.log(
-                '==================================='
+                '==========================='
             );
 
             console.log(
-                '============================================================'
+                '=============================='
             );
 
         } catch (error) {
@@ -1976,7 +1804,7 @@ client.on(
             console.error('');
 
             console.error(
-                '============================================================'
+                '==========================='
             );
 
             console.error(
@@ -1984,7 +1812,7 @@ client.on(
             );
 
             console.error(
-                '============================================================'
+                '================================'
             );
 
             console.error(
@@ -2006,16 +1834,11 @@ client.on(
             );
 
             console.error(
-                '============================================================'
+                '=================================='
             );
         }
     }
 );
-
-
-// ============================================================
-// CLIENT ERROR
-// ============================================================
 
 client.on(
     'error',
@@ -2030,11 +1853,6 @@ client.on(
         );
     }
 );
-
-
-// ============================================================
-// POSTGRESQL MEDIA SERVER
-// ============================================================
 
 const mediaServer =
     http.createServer(
@@ -2127,11 +1945,6 @@ const mediaServer =
                     return;
                 }
 
-
-                // ====================================================
-                // GET MEDIA DIRECTLY FROM POSTGRESQL BYTEA
-                // ====================================================
-
                 const result =
                     await pool.query(
                         `
@@ -2160,17 +1973,13 @@ const mediaServer =
                                 'text/plain'
                         }
                     );
-
                     res.end(
                         'Media Not Found'
                     );
-
                     return;
                 }
-
                 const row =
                     result.rows[0];
-
                 const mediaBuffer =
                     row.media_data;
 
@@ -2181,11 +1990,6 @@ const mediaServer =
                             ? 'image/jpeg'
                             : 'application/pdf'
                     );
-
-
-                // ====================================================
-                // RETURN MEDIA
-                // ====================================================
 
                 res.writeHead(
                     200,
@@ -2257,12 +2061,6 @@ mediaServer.listen(
         );
     }
 );
-
-
-// ============================================================
-// START WHATSAPP
-// ============================================================
-
 console.log('');
 
 console.log(

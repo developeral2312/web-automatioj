@@ -13,7 +13,6 @@ const pool = new Pool({
 
 async function initDatabase() {
     try {
-        // Groups table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS groups (
                 id SERIAL PRIMARY KEY,
@@ -23,13 +22,12 @@ async function initDatabase() {
             );
         `);
 
-        // Messages table with ALL columns
         await pool.query(`
             CREATE TABLE IF NOT EXISTS messages (
                 id SERIAL PRIMARY KEY,
                 whatsapp_message_id TEXT UNIQUE NOT NULL,
                 group_id INTEGER REFERENCES groups(id),
-                sender_id TEXT,                    -- ✅ LID or @c.us ID
+                sender_id TEXT,                    --  LID or @c.us ID
                 sender_number TEXT,                -- Phone number
                 sender_name TEXT,                  -- Contact name
                 message TEXT,
@@ -37,15 +35,15 @@ async function initDatabase() {
                 timestamp TIMESTAMP,
                 has_media BOOLEAN DEFAULT FALSE,
                 media_path TEXT,
-                extracted_text TEXT,               -- ✅ OCR/PDF text
+                extracted_text TEXT,               --  OCR/PDF text
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
 
-        console.log('✅ Database tables ready');
-        console.log('📌 Columns: sender_id, sender_number, sender_name, extracted_text');
+        console.log(' Database tables ready');
+        console.log(' Columns: sender_id, sender_number, sender_name, extracted_text');
     } catch (error) {
-        console.error('❌ Database initialization failed:', error.message);
+        console.error(' Database initialization failed:', error.message);
         console.error(error);
         throw error;
     } finally {
