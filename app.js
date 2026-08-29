@@ -1,6 +1,7 @@
-    const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth } = require('whatsapp-web.js');
 
     const qrcode = require('qrcode-terminal');
+    const path = require('path');
 
     const pool = require('./db');
     const QRCode = require('qrcode');  // Top par add karein
@@ -16,7 +17,6 @@
 
     const fs = require('fs');
 
-    const path = require('path');
 
 
 
@@ -40,8 +40,7 @@
 
     // ============================================================
 
-
-
+   
     function createWhatsAppClient() {
 
 
@@ -71,7 +70,7 @@
                 clientId: 'company-archive',
 
                 dataPath: './.wwebjs_auth'
-
+                  
             }),
 
 
@@ -79,8 +78,7 @@
             puppeteer: {
 
 
-                executablePath: '/usr/bin/chromium',  // ✅ YE ADD KARO
-
+               // executablePath: '/usr/bin/chromium',  // ✅ YE ADD KARO
                 headless: true,
 
 
@@ -5252,7 +5250,7 @@
 
     // ============================================================
 
-    // CLIENT EVENT ATTACHMENT
+    // CLIENT EVENT ATTACHMENT (WITH DASHBOARD FIX)
 
     // ============================================================
 
@@ -5262,24 +5260,61 @@
 
 
 
-        // --------------------------------------------------------
+        // ============================================================
 
-        // QR
+        // DASHBOARD SETUP
 
-        // --------------------------------------------------------
+        // ============================================================
+        
+        const express = require('express');
+        const dashboardApp = express();
+        dashboardApp.set('view engine', 'ejs');
+        dashboardApp.set('views', path.join(__dirname, 'views'));
+        dashboardApp.use(express.static('public'));
+
+        let currentQR = null;
+        let isConnected = false;
+        let phoneNumber = null;
+        let qrError = null;
+
+        // Dashboard routes
+        dashboardApp.get('/', (req, res) => {
+            res.render('dashboard', {
+                qrCode: currentQR,
+                connected: isConnected,
+                phone: phoneNumber,
+                error: qrError
+            });
+        });
+
+        dashboardApp.get('/api/qr-status', (req, res) => {
+            res.json({
+                qr: currentQR,
+                connected: isConnected,
+                phone: phoneNumber,
+                error: qrError
+            });
+        });
+
+        // ============================================================
+
+        // QR EVENT
+
+        // ============================================================
 
 
 
         clientInstance.on('qr', async (qr) => {
             console.log('');
             console.log('============================================================');
-            console.log('📱 WHATSAPP QR CODE');
+            console.log('📱 NEW WHATSAPP QR CODE REQUIRED');
             console.log('============================================================');
             
+            // ✅ Sirf tab dikhao jab QR generate ho (matlab connected nahi hai)
             // Terminal QR (chhota)
             qrcode.generate(qr, { small: true });
             
-            // QR code URL generate karein
+            // QR code URL generate karein (as backup)
             try {
                 const qrUrl = await QRCode.toDataURL(qr, {
                     width: 300,
@@ -5292,9 +5327,22 @@
                 console.log('QR URL generation failed');
             }
             
+            // Dashboard update
+            try {
+                const qrImage = await QRCode.toDataURL(qr, {
+                    width: 300,
+                    margin: 2
+                });
+                currentQR = qrImage;
+                isConnected = false;
+                qrError = null;
+                console.log('✅ QR code ready for dashboard');
+            } catch (err) {
+                qrError = 'Failed to generate QR code';
+            }
+            
             console.log('✅ Scan QR with WhatsApp to connect');
         });
-
 
 
         // --------------------------------------------------------
@@ -5305,23 +5353,15 @@
 
 
 
-        clientInstance.on(
-
-            'authenticated',
-
-            () => {
-
-
-
-                console.log(
-
-                    'WhatsApp authenticated'
-
-                );
-
-            }
-
-        );
+        clientInstance.on('authenticated', () => {
+            console.log('');
+            console.log('✅ WhatsApp authenticated successfully');
+            console.log('✅ No QR code needed - already connected');
+            // QR code variables clear karo
+            currentQR = null;
+            isConnected = true;
+            qrError = null;
+        });
 
 
 
@@ -6088,6 +6128,18 @@
             }
 
         );
+
+        // ============================================================
+        // DASHBOARD SERVER START
+        // ============================================================
+        
+        const DASHBOARD_PORT = 3002;
+        dashboardApp.listen(DASHBOARD_PORT, '0.0.0.0', () => {
+            console.log('');
+            console.log('============================================================');
+            console.log(`📊 DASHBOARD READY at http://localhost:${DASHBOARD_PORT}`);
+            console.log('============================================================');
+        });
 
     }
 

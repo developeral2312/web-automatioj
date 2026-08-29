@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Archiver Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #fff;
+        }
+        .container {
+            background: #1a1a1a;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 0 40px rgba(0,0,0,0.8);
+        }
+        .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 300;
+            margin-bottom: 5px;
+            color: #25D366;
+        }
+        .subtitle {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        .qr-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .qr-container img {
+            width: 250px;
+            height: 250px;
+            display: block;
+        }
+        .status {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            margin: 15px 0;
+        }
+        .status.connected {
+            background: #1a3a2a;
+            color: #25D366;
+            border: 1px solid #25D366;
+        }
+        .status.waiting {
+            background: #3a2a1a;
+            color: #f5a623;
+            border: 1px solid #f5a623;
+        }
+        .status.error {
+            background: #3a1a1a;
+            color: #ff4444;
+            border: 1px solid #ff4444;
+        }
+        .info {
+            color: #888;
+            font-size: 13px;
+            margin-top: 15px;
+            line-height: 1.6;
+        }
+        .refresh-btn {
+            background: #25D366;
+            color: #fff;
+            border: none;
+            padding: 10px 30px;
+            border-radius: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background 0.3s;
+        }
+        .refresh-btn:hover {
+            background: #1da851;
+        }
+        .footer {
+            margin-top: 25px;
+            color: #555;
+            font-size: 12px;
+        }
+        .phone-info {
+            background: #0d0d0d;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            color: #25D366;
+            font-size: 14px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #25D366;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .qr-text {
+            color: #666;
+            font-size: 11px;
+            word-break: break-all;
+            background: #0d0d0d;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            max-height: 60px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">📱</div>
+        <h1>WhatsApp Archiver</h1>
+        <p class="subtitle">Scan QR to connect your WhatsApp</p>
+
+        <div id="qrSection">
+            <% if (qrCode) { %>
+                <div class="qr-container">
+                    <img src="<%= qrCode %>" alt="QR Code">
+                </div>
+                <div class="status waiting">⏳ Waiting for scan</div>
+                <p class="info">Open WhatsApp → Linked Devices → Link a Device</p>
+                <button class="refresh-btn" onclick="location.reload()">🔄 Refresh QR</button>
+            <% } else if (connected) { %>
+                <div class="status connected">✅ Connected</div>
+                <div class="phone-info">📱 Phone: <%= phone %></div>
+                <p class="info">WhatsApp is connected and archiving messages</p>
+            <% } else if (error) { %>
+                <div class="status error">❌ Error</div>
+                <p class="info"><%= error %></p>
+                <button class="refresh-btn" onclick="location.reload()">🔄 Retry</button>
+            <% } else { %>
+                <div class="loading"></div>
+                <p class="info">Loading QR code...</p>
+            <% } %>
+        </div>
+
+        <div class="footer">
+            <span id="statusText">Last updated: <%= new Date().toLocaleTimeString() %></span>
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh every 30 seconds if not connected
+        <% if (!connected) { %>
+            setTimeout(() => {
+                location.reload();
+            }, 30000);
+        <% } %>
+    </script>
+</body>
+</html>
