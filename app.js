@@ -3,6 +3,8 @@
     const qrcode = require('qrcode-terminal');
 
     const pool = require('./db');
+    const QRCode = require('qrcode');  // Top par add karein
+
 
     const googleSheets = require('./google-sheets');
 
@@ -5268,54 +5270,29 @@
 
 
 
-        clientInstance.on('qr', (qr) => {
-
-
-
+        clientInstance.on('qr', async (qr) => {
             console.log('');
-
-
-
-            console.log(
-
-                '============================================================'
-
-            );
-
-
-
-            console.log(
-
-                '📱 NEW WHATSAPP QR CODE RECEIVED'
-
-            );
-
-
-
-            console.log(
-
-                '============================================================'
-
-            );
-
-
-
-            qrcode.generate(
-
-                qr,
-
-                { small: true }
-
-            );
-
-
-
-            console.log(
-
-                '✅ New QR generated - Scan with WhatsApp to connect'
-
-            );
-
+            console.log('============================================================');
+            console.log('📱 WHATSAPP QR CODE');
+            console.log('============================================================');
+            
+            // Terminal QR (chhota)
+            qrcode.generate(qr, { small: true });
+            
+            // QR code URL generate karein
+            try {
+                const qrUrl = await QRCode.toDataURL(qr, {
+                    width: 300,
+                    margin: 2
+                });
+                console.log('\n🔗 QR Code URL (Copy this link):');
+                console.log(qrUrl);
+                console.log('\n💡 Open this URL in browser to scan');
+            } catch (err) {
+                console.log('QR URL generation failed');
+            }
+            
+            console.log('✅ Scan QR with WhatsApp to connect');
         });
 
 
