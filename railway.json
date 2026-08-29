@@ -1,26 +1,20 @@
 {
-    "build": {
-      "builder": "NIXPACKS",
-      "nixpacksConfig": {
-        "phases": {
-          "setup": {
-            "nixPkgs": ["nodejs_20", "chromium"]
-          },
-          "install": {
-            "cmds": ["npm install"]
-          }
-        },
-        "start": {
-          "cmd": "node app.js"
-        }
-      }
+    "name": "whatsapp-archiver",
+    "version": "1.0.0",
+    "description": "WhatsApp message archiver with PostgreSQL and Google Sheets",
+    "main": "app.js",
+    "scripts": {
+      "start": "node app.js"
     },
-    "deploy": {
-      "startCommand": "node app.js"
+    "dependencies": {
+      "dotenv": "^16.3.1",
+      "googleapis": "^118.0.0",
+      "moment-timezone": "^0.5.43",
+      "pg": "^8.11.0",
+      "qrcode-terminal": "^0.12.0",
+      "whatsapp-web.js": "^1.23.0"
     },
-    "environment": {
-      "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true",
-      "PUPPETEER_EXECUTABLE_PATH": "/nix/store/*chromium-*/bin/chromium",
-      "PUPPETEER_HEADLESS": "true"
+    "engines": {
+      "node": "18.x"
     }
   }
