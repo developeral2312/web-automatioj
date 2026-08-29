@@ -1,0 +1,26 @@
+{
+    "build": {
+      "builder": "NIXPACKS",
+      "nixpacksConfig": {
+        "phases": {
+          "setup": {
+            "nixPkgs": ["nodejs_20", "chromium"]
+          },
+          "install": {
+            "cmds": ["npm install"]
+          }
+        },
+        "start": {
+          "cmd": "node app.js"
+        }
+      }
+    },
+    "deploy": {
+      "startCommand": "node app.js"
+    },
+    "environment": {
+      "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true",
+      "PUPPETEER_EXECUTABLE_PATH": "/nix/store/*chromium-*/bin/chromium",
+      "PUPPETEER_HEADLESS": "true"
+    }
+  }
