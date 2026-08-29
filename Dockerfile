@@ -1,6 +1,6 @@
 FROM node:20-slim
 
-# Install all Chrome dependencies
+# Install Chrome dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -43,9 +43,10 @@ RUN apt-get update && apt-get install -y \
 # Install Chromium
 RUN apt-get install -y chromium --no-install-recommends
 
-# Set Puppeteer to use system Chromium
+# CRITICAL: Force Puppeteer to use system Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV PUPPETEER_HEADLESS=true
 
 WORKDIR /app
 
