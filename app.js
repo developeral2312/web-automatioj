@@ -78,7 +78,7 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
             puppeteer: {
 
 
-               // executablePath: '/usr/bin/chromium',  // ✅ YE ADD KARO
+               executablePath: '/usr/bin/chromium',  // ✅ YE ADD KARO
                 headless: true,
 
 
@@ -5312,7 +5312,7 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
             
             // ✅ Sirf tab dikhao jab QR generate ho (matlab connected nahi hai)
             // Terminal QR (chhota)
-            qrcode.generate(qr, { small: true });
+            // qrcode.generate(qr, { small: true });
             
             // QR code URL generate karein (as backup)
             try {
