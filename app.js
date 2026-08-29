@@ -5313,18 +5313,23 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
             console.log('📱 NEW WHATSAPP QR CODE REQUIRED');
             console.log('============================================================');
             
-            // Dashboard ke liye QR update karo, terminal me print mat karo
             try {
                 const qrImage = await QRCode.toDataURL(qr, { width: 300, margin: 2 });
-                global.currentQR = qrImage;
-                global.isConnected = false;
-                global.qrError = null;
-                console.log('✅ QR code ready for dashboard (Check your Railway URL)');
+                currentQR = qrImage;      // ✅ global nahi
+                isConnected = false;      // ✅ global nahi
+                qrError = null;          // ✅ global nahi
+                console.log('✅ QR code ready for dashboard');
             } catch (err) {
-                global.qrError = 'Failed to generate QR code';
+                qrError = 'Failed to generate QR code';
             }
         });
-
+        
+        clientInstance.on('authenticated', () => {
+            console.log('✅ WhatsApp authenticated');
+            currentQR = null;     // ✅ global nahi
+            isConnected = true;   // ✅ global nahi
+            qrError = null;       // ✅ global nahi
+        });
         clientInstance.on('authenticated', () => {
             console.log('✅ WhatsApp authenticated successfully');
             global.currentQR = null;
